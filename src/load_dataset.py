@@ -12,10 +12,8 @@ def load_codesearchnet():
     dataset = load_dataset(DATASET_NAME, LANGUAGE)
     return dataset
 
-
 def main():
     dataset = load_codesearchnet()
-
 
 if __name__ == "__main__":
     main()
