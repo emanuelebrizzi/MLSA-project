@@ -1,85 +1,69 @@
 import tokenize as python_tokenize
 from io import StringIO
-
-from gensim import corpora
-from gensim.utils import simple_preprocess
-
+from collections import Counter
+from nltk.tokenize import word_tokenize
 
 SPECIAL_TOKENS = {
-    "[PAD]": 0,
-    "[UNK]": 1,
+    "<PAD>": 0,
+    "<UNK>": 1,
+    "<SOS>": 2,
+    "<EOS>": 3
 }
-
 
 def tokenize_code(code):
     """
-    Tokenize Python source code.
+    Tokenize Python source code using the built-in tokenize module.
     """
-
     tokens = []
-
-    for token in python_tokenize.generate_tokens(StringIO(code).readline):
-        token_type = token.type
-        token_string = token.string
-
-        if token_type in (
-            python_tokenize.ENCODING,
-            python_tokenize.ENDMARKER,
-            python_tokenize.NEWLINE,
-            python_tokenize.NL,
-            python_tokenize.INDENT,
-            python_tokenize.DEDENT,
-        ):
-            continue
-
-        tokens.append(token_string)
-
+    try:
+        for token in python_tokenize.generate_tokens(StringIO(code).readline):
+            if token.type in (
+                python_tokenize.ENCODING,
+                python_tokenize.ENDMARKER,
+                python_tokenize.NEWLINE,
+                python_tokenize.NL,
+                python_tokenize.INDENT,
+                python_tokenize.DEDENT,
+            ):
+                continue
+            tokens.append(token.string)
+    except Exception:
+        # Fallback in case of malformed code
+        tokens = code.split()
     return tokens
-
 
 def tokenize_summary(summary):
     """
-    Tokenize a natural language summary.
+    Tokenize natural language summary using NLTK.
     """
-    return simple_preprocess(summary)
+    if not summary:
+        return []
+    return word_tokenize(summary.lower())
 
 
-def build_vocabulary(tokenized_texts):
-    """
-    Build a vocabulary from tokenized texts.
-    """
-    dictionary = corpora.Dictionary(tokenized_texts)
-    dictionary.patch_with_special_tokens(SPECIAL_TOKENS)
+class Vocabulary:
+    def __init__(self, specials=SPECIAL_TOKENS):
+        self.stoi = specials.copy()
+        self.itos = {idx: tok for tok, idx in specials.items()}
 
-    return dictionary
+    def __len__(self):
+        return len(self.stoi)
 
+    def add_token(self, token):
+        if token not in self.stoi:
+            idx = len(self.stoi)
+            self.stoi[token] = idx
+            self.itos[idx] = token
 
-def tokens_to_ids(tokens, vocabulary):
-    """
-    Convert tokens into vocabulary IDs.
-    """
-    return vocabulary.doc2idx(tokens)
+    def build_vocab(self, tokenized_texts, max_size=50000, min_freq=2):
+        counter = Counter()
+        for text in tokenized_texts:
+            counter.update(text)
 
+        sorted_by_freq = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        for token, freq in sorted_by_freq:
+            if freq >= min_freq and len(self.stoi) < max_size:
+                self.add_token(token)
 
-def build_code_vocabulary(dataset):
-    """
-    Build the vocabulary for Python source code.
-    """
-    tokenized_codes = [
-        tokenize_code(example["code"])
-        for example in dataset
-    ]
-
-    return build_vocabulary(tokenized_codes)
-
-
-def build_summary_vocabulary(dataset):
-    """
-    Build the vocabulary for natural language summaries.
-    """
-    tokenized_summaries = [
-        tokenize_summary(example["docstring"])
-        for example in dataset
-    ]
-
-    return build_vocabulary(tokenized_summaries)
+    def numericalize(self, tokens):
+        return [self.stoi.get(token, self.stoi["<UNK>"]) for token in tokens]
