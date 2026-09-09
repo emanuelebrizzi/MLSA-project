@@ -1,83 +1,44 @@
-from datasets import DatasetDict
+import re
 
-from load_dataset import load_codesearchnet
-
-COLUMNS = ["code", "docstring"]
-
-# Minimum and maximum character lengths
-MIN_CODE_LENGTH = 10
-MAX_CODE_LENGTH = 10000
-
-MIN_DOCSTRING_LENGTH = 3
-MAX_DOCSTRING_LENGTH = 1000
-
-def clean_code(code):
+def clean_text(text):
     """
-    Basic cleaning of source code.
-
-    We only remove leading/trailing whitespace and preserve
-    the internal formatting of the code.
+    Cleans a generic text string (useful for docstrings/summaries).
     """
-    if code is None:
+    if not isinstance(text, str):
         return ""
+    
+    # Removes multiple spaces and line breaks
+    text = re.sub(r'\s+', ' ', text)
+    # Removes unnecessary special characters while keeping basic punctuation
+    text = re.sub(r'[^a-zA-Z0-9\s.,!?\'"-]', '', text)
+    return text.strip().lower()
 
-    return code.strip()
-
-def clean_docstring(docstring):
+def clean_code(code_str):
     """
-    Clean a docstring by removing leading/trailing whitespace
-    and normalizing consecutive whitespace characters.
+    Cleans the code snippet. 
+    Keeps the basic structure but removes excess whitespace.
     """
-    if docstring is None:
+    if not isinstance(code_str, str):
         return ""
+    
+    # Replaces tabs with single spaces
+    code_str = code_str.replace('\t', ' ')
+    # Removes multiple empty spaces, but keeps a single space to separate tokens
+    code_str = re.sub(r'\s+', ' ', code_str)
+    return code_str.strip()
 
-    docstring = docstring.strip()
-    docstring = " ".join(docstring.split())
-
-    return docstring
-
-def preprocess_example(example):
+def preprocess_dataframe(df):
     """
-    Preprocess a single dataset example.
+    Applies the cleaning functions to the entire DataFrame.
     """
-    code = clean_code(example["code"])
-    docstring = clean_docstring(example["docstring"])
-
-    return {
-        "code": code,
-        "docstring": docstring,
-    }
-
-def is_valid_example(example):
-    """
-    Check whether an example satisfies the length constraints.
-    """
-    code = example["code"]
-    docstring = example["docstring"]
-
-    if not code or not docstring:
-        return False
-
-    if not MIN_CODE_LENGTH <= len(code) <= MAX_CODE_LENGTH:
-        return False
-
-    if not MIN_DOCSTRING_LENGTH <= len(docstring) <= MAX_DOCSTRING_LENGTH:
-        return False
-
-    return True
-
-def preprocess_dataset(dataset):
-    """
-    Apply preprocessing to all dataset splits.
-    """
-
-    # Keep only the columns required for code summarization.
-    dataset = dataset.select_columns(COLUMNS)
-
-    # Clean code and docstrings.
-    dataset = dataset.map(preprocess_example)
-
-    # Remove missing, empty, or excessively long examples.
-    dataset = dataset.filter(is_valid_example)
-
-    return dataset
+    df_clean = df.copy()
+    
+    # Assuming the columns are named 'code' and 'summary'
+    df_clean['code'] = df_clean['code'].apply(clean_code)
+    df_clean['summary'] = df_clean['summary'].apply(clean_text)
+    
+    # Removes any rows left empty after cleaning
+    df_clean = df_clean[(df_clean['code'] != '') & (df_clean['summary'] != '')]
+    df_clean = df_clean.dropna()
+    
+    return df_clean
