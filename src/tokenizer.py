@@ -1,69 +1,76 @@
-import tokenize as python_tokenize
-from io import StringIO
 from collections import Counter
-from nltk.tokenize import word_tokenize
 
-SPECIAL_TOKENS = {
-    "<PAD>": 0,
-    "<UNK>": 1,
-    "<SOS>": 2,
-    "<EOS>": 3
-}
-
-def tokenize_code(code):
+class SimpleTokenizer:
     """
-    Tokenize Python source code using the built-in tokenize module.
+    A basic tokenizer that builds a vocabulary from text and converts
+    strings to sequences of integer IDs and vice versa.
     """
-    tokens = []
-    try:
-        for token in python_tokenize.generate_tokens(StringIO(code).readline):
-            if token.type in (
-                python_tokenize.ENCODING,
-                python_tokenize.ENDMARKER,
-                python_tokenize.NEWLINE,
-                python_tokenize.NL,
-                python_tokenize.INDENT,
-                python_tokenize.DEDENT,
-            ):
-                continue
-            tokens.append(token.string)
-    except Exception:
-        # Fallback in case of malformed code
-        tokens = code.split()
-    return tokens
-
-def tokenize_summary(summary):
-    """
-    Tokenize natural language summary using NLTK.
-    """
-    if not summary:
-        return []
-    return word_tokenize(summary.lower())
-
-
-class Vocabulary:
-    def __init__(self, specials=SPECIAL_TOKENS):
-        self.stoi = specials.copy()
-        self.itos = {idx: tok for tok, idx in specials.items()}
-
-    def __len__(self):
-        return len(self.stoi)
-
-    def add_token(self, token):
-        if token not in self.stoi:
-            idx = len(self.stoi)
-            self.stoi[token] = idx
-            self.itos[idx] = token
-
-    def build_vocab(self, tokenized_texts, max_size=50000, min_freq=2):
+    def __init__(self, max_vocab_size=10000):
+        self.max_vocab_size = max_vocab_size
+        self.PAD_IDX = 0
+        self.UNK_IDX = 1
+        self.SOS_IDX = 2
+        self.EOS_IDX = 3
+        
+        # Core dictionaries
+        self.word2idx = {
+            '<PAD>': self.PAD_IDX, 
+            '<UNK>': self.UNK_IDX, 
+            '<SOS>': self.SOS_IDX, 
+            '<EOS>': self.EOS_IDX
+        }
+        self.idx2word = {v: k for k, v in self.word2idx.items()}
+        
+    def build_vocab(self, texts):
+        """
+        Builds the vocabulary based on word frequencies in the provided texts.
+        """
         counter = Counter()
-        for text in tokenized_texts:
-            counter.update(text)
+        for text in texts:
+            # Simple whitespace splitting
+            counter.update(text.split())
+            
+        # Keep only the most common words, leaving space for special tokens
+        most_common = counter.most_common(self.max_vocab_size - len(self.word2idx))
+        
+        for word, _ in most_common:
+            idx = len(self.word2idx)
+            self.word2idx[word] = idx
+            self.idx2word[idx] = word
 
-        sorted_by_freq = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-        for token, freq in sorted_by_freq:
-            if freq >= min_freq and len(self.stoi) < max_size:
-                self.add_token(token)
+    def encode(self, text, max_len=None, add_special_tokens=True):
+        """
+        Converts a text string into a list of integer IDs.
+        """
+        tokens = [self.word2idx.get(word, self.UNK_IDX) for word in text.split()]
+        
+        if add_special_tokens:
+            tokens = [self.SOS_IDX] + tokens + [self.EOS_IDX]
+            
+        if max_len is not None:
+            # Truncate if too long
+            tokens = tokens[:max_len]
+            # Pad if too short
+            tokens += [self.PAD_IDX] * (max_len - len(tokens))
+            
+        return tokens
 
-    def numericalize(self, tokens):
-        return [self.stoi.get(token, self.stoi["<UNK>"]) for token in tokens]
+    def decode(self, token_ids, skip_special_tokens=True):
+        """
+        Converts a list of integer IDs back into a text string.
+        """
+        words = []
+        for idx in token_ids:
+            # Handle PyTorch tensors if passed by mistake
+            if hasattr(idx, 'item'):
+                idx = idx.item()
+                
+            if skip_special_tokens and idx in [self.PAD_IDX, self.SOS_IDX, self.EOS_IDX]:
+                continue
+                
+            words.append(self.idx2word.get(idx, '<UNK>'))
+            
+        return ' '.join(words)
+        
+    def __len__(self):
+        return len(self.word2idx)
