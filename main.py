@@ -1,7 +1,7 @@
 import argparse
 import sys
-from scripts.train import train
-# from scripts.summarize import run_inference (if you decide to create a similar function)
+from train import train
+from summarize import run_inference  # <-- IMPORT AGGIUNTO QUI
 
 def main():
     parser = argparse.ArgumentParser(description="Code Summarization Project - Transformer Seq2Seq")
@@ -24,9 +24,7 @@ def main():
         
     elif args.mode == 'summarize':
         print("Starting the inference mode...")
-        # Here you could call your main inference function
-        # e.g.: run_summarization_pipeline()
-        print("(Make sure you have implemented the entry function in scripts/summarize.py!)")
+        run_inference()  # <-- CHIAMATA ALLA FUNZIONE INVECE DEL PRINT
         
     elif args.mode == 'evaluate':
         print("Starting model evaluation (BLEU/ROUGE)...")
