@@ -1,0 +1,35 @@
+# ==========================================
+# Code Summarization Configuration
+# ==========================================
+
+experiment:
+  name: "codet5_baseline"
+  seed: 42                       # Fix the seed for deterministic results
+
+data:
+  dataset_name: "code_search_net"
+  language: "python"
+  max_input_length: 256          # Maximum tokens for the input code
+  max_target_length: 64          # Maximum tokens for the target summary
+
+model:
+  # Using CodeT5 small as a strong Transformer baseline
+  checkpoint: "Salesforce/codet5-small"
+
+training:
+  output_dir: "./checkpoints"
+  num_train_epochs: 5
+  batch_size: 16                 # Batching: 16-32 recommended
+  learning_rate: 3.0e-4          # Optimizer: AdamW (LR ~3e-4)
+  weight_decay: 0.01
+  logging_steps: 100             # Log loss frequently to catch spikes
+  eval_steps: 500
+  save_steps: 500
+  save_total_limit: 3            # Keep only the top 3 checkpoints to save disk space
+  fp16: true                     # Mixed precision (torch.cuda.amp) for memory + speed
+
+generation:
+  # Parameters for inference and evaluation
+  num_beams: 4                   # Beam search (4-6 recommended)
+  max_length: 64                 # Length control for outputs
+  length_penalty: 1.0            # Penalize or encourage longer sequences (0.8-1.0)
