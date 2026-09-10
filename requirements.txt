@@ -1,9 +1,8 @@
 torch>=2.0.0
-pandas>=2.0.0
-numpy>=1.24.0
-scikit-learn>=1.2.0
-tokenizers>=0.13.3
-
-# Librerie aggiuntive per le metriche NLP (BLEU e ROUGE) come richiesto dal progetto
-rouge-score>=0.1.2
+transformers>=4.30.0
+datasets==2.19.2
+evaluate>=0.4.0
+rouge_score>=0.1.2
 sacrebleu>=2.3.1
+pyyaml>=6.0
+numpy>=1.24.0
