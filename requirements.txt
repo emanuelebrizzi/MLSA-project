@@ -2,8 +2,8 @@
 torch>=2.0.1
 
 # --- Hugging Face Ecosystem ---
-transformers>=4.38.0
-datasets>=3.0.0
+transformers>=4.40.0
+datasets>=3.20.0
 huggingface_hub>=1.23.0
 accelerate>=0.28.0
 evaluate>=0.4.0
@@ -14,5 +14,5 @@ rouge-score>=0.1.2
 
 # --- Environment & Data Utilities ---
 pyyaml>=6.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.5.0
 tqdm>=4.65.0
