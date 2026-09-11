@@ -48,12 +48,12 @@ class QualitativeEvaluationCallback(TrainerCallback):
     """
     Custom callback to sample and log qualitative summaries during training checks.
     """
-    def __init__(self, tokenizer, eval_dataset, num_examples=3):
+    def __init__(self, tokenizer, eval_dataset, num_examples=5):
         self.tokenizer = tokenizer
         self.eval_dataset = eval_dataset.select(range(num_examples))
         
     def on_evaluate(self, args, state, control, model, **kwargs):
-        print(f"\n--- Qualitative Evaluation at Step {state.global_step} ---")
+        print(f"\n{'='*25} Step {state.global_step:4d} Qualitative Check {'='*25}")
         model.eval()
         
         for i in range(len(self.eval_dataset)):
@@ -72,12 +72,15 @@ class QualitativeEvaluationCallback(TrainerCallback):
                     pad_token_id=self.tokenizer.pad_token_id
                 )
             
+            # Decode and collapse repeated whitespaces/newlines into a single line
             generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+            generated_text = " ".join(generated_text.replace('"""', '').split())
+            
             label_ids = [idx for idx in example["labels"] if idx != -100]
             expected_text = self.tokenizer.decode(label_ids, skip_special_tokens=True)
+            expected_text = " ".join(expected_text.replace('"""', '').split())
             
-            print(f"\nExample {i+1}:")
-            print(f"EXPECTED : {expected_text}")
-            print(f"GENERATED: {generated_text}")
+            print(f"[{i+1}] TARGET : {expected_text}")
+            print(f"    PREDICT: {generated_text}\n")
             
-        print("-" * 50)
+        print("=" * 72)
