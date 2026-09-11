@@ -1,106 +1,122 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from sklearn.model_selection import train_test_split
 import os
 import sys
+import math
+import yaml
+import torch
+from transformers import (
+    AutoModelForSeq2SeqLM,
+    Seq2SeqTrainingArguments,
+    Seq2SeqTrainer,
+    DataCollatorForSeq2Seq
+)
 
-# Add the root directory to the python path to allow importing from src/
+# Add the project root to the path to import from the 'data' directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.load_dataset import load_data
-from src.preprocess import preprocess_dataframe
-from src.tokenizer import SimpleTokenizer
-from src.dataset import get_dataloaders
-from src.model import CodeSummarizationTransformer
+from scripts.loader import load_and_prepare_data
+from scripts.preprocess import get_tokenizer, tokenize_dataset
+from scripts.metrics import build_compute_metrics_fn, QualitativeEvaluationCallback
 
-def train():
-    # 1. Configuration (Hyperparameters)
-    EPOCHS = 5
-    BATCH_SIZE = 8
-    LEARNING_RATE = 0.0001
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {DEVICE}")
+def load_config(config_path="configs/base.yaml"):
+    """
+    Loads the YAML configuration file containing all hyperparameters.
+    """
+    with open(config_path, "r") as file:
+        return yaml.safe_load(file)
 
-    # 2. Load and Preprocess Data
-    df_raw = load_data() # Loads dummy data by default
-    df_clean = preprocess_dataframe(df_raw)
+def main():
+    """
+    Main function to execute the end-to-end training pipeline.
+    """
+    # Load configuration
+    config = load_config()
+    print(f"Starting experiment: {config['experiment']['name']}")
     
-    # Split using scikit-learn
-    train_df, val_df = train_test_split(df_clean, test_size=0.2, random_state=42)
-    print(f"Training samples: {len(train_df)}, Validation samples: {len(val_df)}")
-
-    # 3. Tokenization (Build vocabularies on training data only to avoid data leakage)
-    code_tokenizer = SimpleTokenizer(max_vocab_size=5000)
-    summary_tokenizer = SimpleTokenizer(max_vocab_size=3000)
+    # 2. Set the random seed for reproducibility
+    torch.manual_seed(config['experiment']['seed'])
     
-    code_tokenizer.build_vocab(train_df['code'].tolist())
-    summary_tokenizer.build_vocab(train_df['summary'].tolist())
-
-    # 4. Create DataLoaders
-    train_loader, val_loader = get_dataloaders(
-        train_df, val_df, 
-        code_tokenizer, summary_tokenizer, 
-        batch_size=BATCH_SIZE
+    # Load and preprocess data
+    # Using the debug mode by default here to follow the "Start tiny" advice
+    train_ds, val_ds, test_ds = load_and_prepare_data(debug=True, debug_size=1000)
+    
+    tokenizer = get_tokenizer(config['model']['checkpoint'])
+    
+    tokenized_train = tokenize_dataset(
+        train_ds, tokenizer, 
+        max_input_len=config['data']['max_input_length'],
+        max_target_len=config['data']['max_target_length']
     )
-
-    # 5. Initialize Model
-    model = CodeSummarizationTransformer(
-        src_vocab_size=len(code_tokenizer),
-        tgt_vocab_size=len(summary_tokenizer),
-        d_model=128,      # Reduced for dummy data testing
-        nhead=4, 
-        num_encoder_layers=2, 
-        num_decoder_layers=2
-    ).to(DEVICE)
-
-    # 6. Loss and Optimizer
-    # Ignore padding index when calculating loss (standard practice)
-    PAD_IDX = summary_tokenizer.PAD_IDX
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-    # 7. Training Loop
-    print("Starting training...")
-    for epoch in range(EPOCHS):
-        model.train()
-        epoch_loss = 0
-        
-        for batch_idx, (src, tgt) in enumerate(train_loader):
-            src, tgt = src.to(DEVICE), tgt.to(DEVICE)
-            
-            # For Seq2Seq, we feed all but the last token into the decoder
-            # and expect it to predict all but the first token (shifted by 1)
-            tgt_input = tgt[:, :-1]
-            tgt_expected = tgt[:, 1:]
-            
-            optimizer.zero_grad()
-            
-            # Forward pass
-            output = model(src, tgt_input, src_pad_token=PAD_IDX, tgt_pad_token=PAD_IDX)
-            
-            # Calculate loss (CrossEntropy expects inputs of shape [N, C] and targets of shape [N])
-            # Reshape predictions to (batch_size * seq_len, vocab_size) and targets to (batch_size * seq_len)
-            loss = criterion(output.reshape(-1, output.shape[-1]), tgt_expected.reshape(-1))
-            
-            # Backward pass and optimization
-            loss.backward()
-            
-            # Optional: Gradient clipping to prevent exploding gradients
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
-            optimizer.step()
-            epoch_loss += loss.item()
-            
-        avg_train_loss = epoch_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {avg_train_loss:.4f}")
-        
-    print("Training completed.")
+    tokenized_val = tokenize_dataset(
+        val_ds, tokenizer, 
+        max_input_len=config['data']['max_input_length'],
+        max_target_len=config['data']['max_target_length']
+    )
     
-    # Save the model (make sure the checkpoints directory exists)
-    os.makedirs('checkpoints', exist_ok=True)
-    torch.save(model.state_dict(), 'checkpoints/transformer_model.pth')
-    print("Model saved to checkpoints/transformer_model.pth")
+    # Load the Seq2Seq Model
+    print(f"Loading model: {config['model']['checkpoint']}...")
+    model = AutoModelForSeq2SeqLM.from_pretrained(config['model']['checkpoint'])
+    
+    # A DataCollator automatically pads inputs to the maximum length of the current batch
+    data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
+    
+    # Define Training Arguments
+    training_args = Seq2SeqTrainingArguments(
+        output_dir=config['training']['output_dir'],
+        eval_strategy="steps",
+        eval_steps=config['training']['eval_steps'],
+        logging_steps=config['training']['logging_steps'],
+        save_steps=config['training']['save_steps'],
+        learning_rate=float(config['training']['learning_rate']),
+        per_device_train_batch_size=config['training']['batch_size'],
+        per_device_eval_batch_size=config['training']['batch_size'],
+        weight_decay=config['training']['weight_decay'],
+        save_total_limit=config['training']['save_total_limit'],
+        num_train_epochs=config['training']['num_train_epochs'],
+        predict_with_generate=True,     # Crucial for computing BLEU/ROUGE during evaluation
+        fp16=config['training']['fp16'], # Use Mixed Precision if a compatible GPU is available
+        seed=config['experiment']['seed']
+    )
+    
+    # Initialize Trainer
+    trainer = Seq2SeqTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_train,
+        eval_dataset=tokenized_val,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+        compute_metrics=build_compute_metrics_fn(tokenizer)
+    )
+    
+    # Add custom callback to see generated summaries during training
+    trainer.add_callback(QualitativeEvaluationCallback(tokenizer, tokenized_val, num_examples=3))
+    
+    # Start Training
+    print("Starting the training process...")
+    train_result = trainer.train()
+    
+    # Save the final model and tokenizer
+    print("Saving the final model...")
+    trainer.save_model(os.path.join(config['training']['output_dir'], "final_model"))
+    
+    # Final Evaluation & Perplexity
+    print("Running final evaluation...")
+    eval_results = trainer.evaluate()
+    
+    # Compute Perplexity from the Cross-Entropy Loss
+    perplexity = math.exp(eval_results["eval_loss"])
+    print(f"Final Validation Perplexity: {perplexity:.4f}")
+    print(f"Final Validation BLEU: {eval_results.get('eval_bleu', 0):.4f}")
+
+def load_config(config_path="configs/base.yaml"):
+    """
+    Loads the YAML configuration file containing all hyperparameters.
+    """
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    full_path = os.path.join(project_root, config_path)
+    
+    with open(full_path, "r", encoding="utf-8") as file:
+        return yaml.safe_load(file)
 
 if __name__ == "__main__":
-    train()
+    main()
