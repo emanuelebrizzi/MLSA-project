@@ -1,0 +1,37 @@
+# ==============================================================================
+# Code Summarization Configuration Template & Documentation
+# ==============================================================================
+
+experiment:
+  name: "codet5_python_summarization"            # Experiment tag for tracking runs and logs
+  seed: 42                                      # Master random seed ensuring reproducibility across runs
+
+data:
+  dataset_name: "code-search-net/code_search_net" # Benchmark dataset identifier on Hugging Face Hub
+  language: "python"                            # Language partition to extract from CodeSearchNet
+  debug: false                                  # If true, loads small subset for quick local smoke tests
+  debug_size: 100                               # Number of training samples loaded when debug is true
+  max_input_length: 256                         # Maximum code tokens retained before truncation occurs
+  max_target_length: 64                         # Maximum summary tokens produced before generation stops
+
+model:
+  checkpoint: "Salesforce/codet5-small"         # Base pre-trained model checkpoint and tokenizer
+
+training:
+  output_dir: "./checkpoints"                   # Destination folder where checkpoints and models are saved
+  max_steps: 2000                               # Hard cap on update steps; overrides epochs if greater than 0
+  num_train_epochs: 3                           # Complete passes over data when max_steps is null or 0
+  batch_size: 16                                # Batch size per hardware device during train and validation
+  learning_rate: 3.0e-4                         # Peak learning rate supplied to the AdamW optimizer
+  weight_decay: 0.01                            # L2 penalty coefficient applied to curb weight overfitting
+  logging_steps: 50                             # Step frequency for printing current training loss to stdout
+  eval_steps: 500                               # Step frequency for computing BLEU/ROUGE validation metrics
+  save_steps: 500                               # Step frequency for serializing model weights to storage
+  save_total_limit: 3                           # Maximum number of recent checkpoints kept on local disk
+  fp16: true                                    # Enables FP16 mixed precision for faster GPU execution
+
+generation:
+  num_beams: 4                                  # Parallel candidate beams tracked during beam search decode
+  max_length: 64                                # Hard limit on total tokens generated during evaluation
+  length_penalty: 1.0                           # Exponential factor penalizing excessively brief hypotheses
+  num_qualitative_examples: 5                   # Count of sample predictions printed during evaluation steps
