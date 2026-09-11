@@ -49,7 +49,7 @@ def main():
     
     # Load data (we only need the test set here)
     # Using debug=True for fast testing, switch to False for the final run
-    _, _, test_ds = load_and_prepare_data(debug=True, debug_size=1000)
+    train_ds, val_ds, _ = load_and_prepare_data(debug=False)
     
     # Load tokenizer and model from the CHECKPOINT, not from the original hub name
     # This ensures we use the exact vocabulary and weights we trained
