@@ -11,14 +11,10 @@ The repository follows a strict modular architecture to separate data processing
 ```text
 project/
 ├── data/
-│   ├── __init__.py
 │   ├── loader.py          # Downloads, cleans, and splits the CodeSearchNet dataset
 │   └── preprocess.py      # Handles tokenization and inputs formatting
 ├── models/
-│   ├── __init__.py
-│   └── builder.py         # Defines and initializes the Seq2Seq architecture
 ├── scripts/
-│   ├── __init__.py
 │   ├── train.py           # Main training loop with Seq2SeqTrainer
 │   ├── eval.py            # Evaluation script computing BLEU, ROUGE, and Perplexity
 │   ├── summarize.py       # Inference script for real-time code summarization
@@ -28,3 +24,44 @@ project/
 ├── checkpoints/           # (Git-ignored) Saved model weights and final models
 ├── README.md
 └── requirements.txt
+```
+
+## Installation
+
+1. Clone this repository:
+
+```bash
+git clone https://github.com/emanuelebrizzi/MLSA-project.git
+cd MLSA-project
+```
+2. Install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Quick Start
+
+The project is controlled via the `configs/base.yaml` file.
+
+### 1. Training
+To train the model, simply run the training script. It will automatically load the data, initialize the model from `models/builder.py`, and save the output in the `checkpoints/` directory.
+
+```bash
+python scripts/train.py
+```
+
+### 2. Evaluation
+
+To evaluate a trained checkpoint on the test set and compute metrics (Cross-Entropy Loss, Perplexity, BLEU, and ROUGE-1/2/L):
+
+```bash
+python scripts/eval.py --checkpoint checkpoints/final_model
+```
+
+
+### 3. Summarization
+You can test the model dynamically on unseen code snippets. The script accepts either a direct string or a Python file.
+
+```bash
+python scripts/eval.py --checkpoint checkpoints/final_model
+```
