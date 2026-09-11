@@ -2,10 +2,10 @@
 torch>=2.0.1
 
 # --- Hugging Face Ecosystem ---
-transformers>=4.30.0
+transformers>=4.38.0
 datasets>=2.19.2
-huggingface_hub>=0.25.0
-accelerate>=0.26.0
+huggingface_hub>=1.23.0
+accelerate>=0.28.0
 evaluate>=0.4.0
 
 # --- NLP Evaluation Metrics ---
@@ -14,5 +14,5 @@ rouge-score>=0.1.2
 
 # --- Environment & Data Utilities ---
 pyyaml>=6.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 tqdm>=4.65.0
