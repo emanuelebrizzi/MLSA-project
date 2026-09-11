@@ -3,6 +3,7 @@ import sys
 import math
 import yaml
 import argparse
+import torch
 from transformers import (
     AutoModelForSeq2SeqLM,
     Seq2SeqTrainingArguments,
@@ -33,7 +34,7 @@ def parse_args():
     parser.add_argument(
         "--config", 
         type=str, 
-        default="configs/base.yaml", 
+        default="configs/local_test.yaml", 
         help="Path to configuration YAML file"
     )
     return parser.parse_args()
