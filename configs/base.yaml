@@ -9,6 +9,7 @@ experiment:
 data:
   dataset_name: "code_search_net"
   language: "python"
+  debug: false
   max_input_length: 256          # Maximum tokens for the input code
   max_target_length: 64          # Maximum tokens for the target summary
 
