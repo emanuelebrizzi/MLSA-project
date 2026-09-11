@@ -1,78 +1,97 @@
-import torch
-import sys
 import os
+import sys
+import argparse
+import torch
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from src.tokenizer import SimpleTokenizer
-from src.model import CodeSummarizationTransformer
-from src.preprocess import clean_code
-
-def greedy_decode(model, src, max_len, start_symbol_idx, end_symbol_idx, device):
+def parse_args():
     """
-    Generates a sequence token by token using greedy decoding.
+    Parses command-line arguments for running inference.
+    Supports both direct string input and file input.
     """
-    # Create source mask
-    src = src.to(device)
-    
-    # Encode source
-    memory = model.transformer.encoder(
-        model.pos_encoder(model.src_embedding(src) * (model.d_model ** 0.5))
+    parser = argparse.ArgumentParser(description="Generate summaries for Python code snippets.")
+    parser.add_argument(
+        "--checkpoint", 
+        type=str, 
+        required=True, 
+        help="Path to the trained model checkpoint"
     )
     
-    # Initialize target sequence with the start symbol <SOS>
-    ys = torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device)
+    # Mutually exclusive group: provide either --input or --file, not both
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--input", 
+        type=str, 
+        help="A Python code snippet as a string"
+    )
+    group.add_argument(
+        "--file", 
+        type=str, 
+        help="Path to a Python file to summarize"
+    )
     
-    for i in range(max_len - 1):
-        # Create target mask to prevent looking ahead
-        tgt_mask = model.generate_square_subsequent_mask(ys.size(1)).to(device)
-        
-        # Decode
-        out = model.transformer.decoder(
-            model.pos_encoder(model.tgt_embedding(ys) * (model.d_model ** 0.5)), 
-            memory, 
-            tgt_mask=tgt_mask
-        )
-        
-        # Get the next word (projection)
-        prob = model.fc_out(out[:, -1])
-        _, next_word = torch.max(prob, dim=1)
-        next_word = next_word.item()
-        
-        # Append to target sequence
-        ys = torch.cat([ys, torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=1)
-        
-        # Stop if <EOS> is generated
-        if next_word == end_symbol_idx:
-            break
-            
-    return ys
+    return parser.parse_args()
 
-def summarize_code(code_snippet, model, code_tok, sum_tok, device, max_len=50):
+def generate_summary(code_snippet, model, tokenizer, device):
     """
-    Full pipeline to clean, tokenize, generate, and decode a summary.
+    Takes a string of Python code and generates a natural language summary.
     """
-    model.eval()
+    # 1. Tokenize the input code
+    inputs = tokenizer(
+        code_snippet, 
+        return_tensors="pt", 
+        max_length=256, 
+        truncation=True
+    ).to(device)
     
-    # Preprocess and tokenize input
-    clean_snippet = clean_code(code_snippet)
-    src_tokens = code_tok.encode(clean_snippet, add_special_tokens=True)
-    src_tensor = torch.tensor([src_tokens], dtype=torch.long)
-    
-    # Generate token IDs
+    # 2. Generate output tokens using Beam Search for better quality
     with torch.no_grad():
-        tgt_tokens = greedy_decode(
-            model, src_tensor, max_len, 
-            start_symbol_idx=sum_tok.SOS_IDX, 
-            end_symbol_idx=sum_tok.EOS_IDX, 
-            device=device
+        output_tokens = model.generate(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            max_length=64,
+            num_beams=4,            # Explores multiple paths to find the best summary
+            length_penalty=1.0,     # Balances the length of the output
+            early_stopping=True
         )
         
-    # Decode back to text (skipping special tokens)
-    summary = sum_tok.decode(tgt_tokens[0].cpu().numpy(), skip_special_tokens=True)
+    # 3. Decode the generated tokens back into a readable string
+    summary = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
     return summary
 
+def main():
+    args = parse_args()
+    
+    # Determine the execution device (GPU if available, otherwise CPU)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Loading model on {device}...")
+    
+    # Load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained(args.checkpoint)
+    model = AutoModelForSeq2SeqLM.from_pretrained(args.checkpoint).to(device)
+    model.eval() # Set to evaluation mode to disable dropout layers
+    
+    # Extract the code to summarize
+    code_to_summarize = ""
+    if args.input:
+        code_to_summarize = args.input
+    elif args.file:
+        if not os.path.exists(args.file):
+            print(f"Error: File '{args.file}' not found.")
+            sys.exit(1)
+        with open(args.file, "r", encoding="utf-8") as f:
+            code_to_summarize = f.read()
+            
+    print("\n--- INPUT CODE ---")
+    print(code_to_summarize)
+    print("------------------\n")
+    
+    # Generate and print the summary
+    summary = generate_summary(code_to_summarize, model, tokenizer, device)
+    
+    print("--- GENERATED SUMMARY ---")
+    print(summary)
+    print("-------------------------")
+
 if __name__ == "__main__":
-    # Esempio di utilizzo (supponendo di aver salvato i tokenizer e il modello)
-    print("Script pronto per l'inferenza. Per utilizzarlo, dovrai caricare il modello")
-    print("addestrato da checkpoints/transformer_model.pth e i vocabolari costruiti in fase di training.")
+    main()
