@@ -104,7 +104,9 @@ def main():
     )
     
     # Add callback to see generated summaries during training
-    trainer.add_callback(QualitativeEvaluationCallback(tokenizer, tokenized_val, num_examples=3)) 
+    num_examples = config.get('generation', {}).get('num_qualitative_examples', 5)
+    trainer.add_callback(QualitativeEvaluationCallback(tokenizer, tokenized_val, num_examples=num_examples))
+
 
     # Model execution (supports resuming from checkpoints)
     print("Starting model optimization phase...")
@@ -148,8 +150,8 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/base.yaml",
-        help="Relative or absolute path to the YAML configuration file (default: configs/base.yaml)"
+        default="configs/local_test.yaml",
+        help="Relative or absolute path to the YAML configuration file (default: configs/local_test.yaml)"
     )
     parser.add_argument(
         "--resume",
