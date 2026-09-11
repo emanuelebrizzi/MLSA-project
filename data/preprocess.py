@@ -5,7 +5,7 @@ def get_tokenizer(checkpoint="Salesforce/codet5-small"):
     Loads the tokenizer from the Hugging Face hub.
     """
     print(f"Loading tokenizer for {checkpoint}...")
-    return AutoTokenizer.from_pretrained(checkpoint)
+    return AutoTokenizer.from_pretrained(checkpoint, use_fast=False)
 
 def tokenize_dataset(dataset, tokenizer, max_input_len=256, max_target_len=64):
     """
