@@ -6,9 +6,16 @@ def clean_batch(batch):
     Strips whitespaces and converts natural language docstrings to lowercase.
     """
     cleaned_codes = [code.strip() if code else "" for code in batch["func_code_string"]]
-    cleaned_summaries = [
-        summary.strip().lower() if summary else "" for summary in batch["func_documentation_string"]
-    ]
+    cleaned_summaries = []
+    
+    for summary in batch["func_documentation_string"]:
+        if summary:
+            # Take only the first non-empty line (the main summary sentence)
+            first_line = summary.strip().split("\n")[0].strip().lower()
+            cleaned_summaries.append(first_line)
+        else:
+            cleaned_summaries.append("")
+            
     return {"code": cleaned_codes, "summary": cleaned_summaries}
 
 def filter_empty(example):
