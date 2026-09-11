@@ -83,7 +83,7 @@ def main():
         args=training_args,
         train_dataset=tokenized_train,
         eval_dataset=tokenized_val,
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=build_compute_metrics_fn(tokenizer)
     )
