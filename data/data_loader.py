@@ -1,16 +1,15 @@
 from datasets import load_dataset
 
-def clean_text(example):
+def clean_batch(batch):
     """
-    Normalize the text by removing extra spaces and formatting the summary.
+    Cleans and normalizes code and summary fields in batches.
+    Strips whitespaces and converts natural language docstrings to lowercase.
     """
-    # Keep the code structure but remove trailing whitespaces
-    code = example['func_code_string'].strip()
-    
-    # Lowercase the summary, as suggested in the "Data Handling Tips"
-    summary = example['func_documentation_string'].strip().lower()
-    
-    return {"code": code, "summary": summary}
+    cleaned_codes = [code.strip() if code else "" for code in batch["func_code_string"]]
+    cleaned_summaries = [
+        summary.strip().lower() if summary else "" for summary in batch["func_documentation_string"]
+    ]
+    return {"code": cleaned_codes, "summary": cleaned_summaries}
 
 def filter_empty(example):
     """
@@ -20,38 +19,47 @@ def filter_empty(example):
 
 def load_and_prepare_data(debug=False, debug_size=1000):
     """
-    Load CodeSearchNet, clean it, and return train/val/test datasets.
+    Downloads CodeSearchNet (Python), normalizes text, prunes invalid samples,
+    and returns train, validation, and test splits.
     """
-    print("Loading CodeSearchNet (Python)...")
+    print("Loading CodeSearchNet dataset (language: Python)...")
     dataset = load_dataset("code-search-net/code_search_net", "python")
+
+    print("Cleaning and normalizing text fields across splits...")
+    # Retrieve original column names from the train split to strip unused metadata
+    columns_to_remove = dataset["train"].column_names
     
-    # Rename and clean columns
-    print("Cleaning data...")
-    dataset = dataset.map(clean_text, remove_columns=dataset['train'].column_names)
-    
-    # Filter empty or invalid rows
-    dataset = dataset.filter(filter_empty)
-    
-    # Create a "Tiny Dataset" to test the pipeline on CPU
+    # Process in batches for significantly faster execution
+    dataset = dataset.map(
+        clean_batch,
+        batched=True,
+        remove_columns=columns_to_remove,
+        desc="Normalizing text"
+    )
+
+    print("Filtering invalid or overly short sequences...")
+    dataset = dataset.filter(filter_empty, desc="Filtering samples")
+
     if debug:
-        print(f"DEBUG mode active: extracting only {debug_size} examples.")
-        # Select a deterministic subset for reproducibility
-        train_ds = dataset['train'].select(range(debug_size))
-        val_ds = dataset['validation'].select(range(debug_size // 10))
-        test_ds = dataset['test'].select(range(debug_size // 10))
+        print(f"Debug mode enabled: slicing tiny subsets (debug_size={debug_size})...")
+        train_ds = dataset["train"].select(range(min(debug_size, len(dataset["train"]))))
+        val_ds = dataset["validation"].select(range(min(debug_size // 10, len(dataset["validation"]))))
+        test_ds = dataset["test"].select(range(min(debug_size // 10, len(dataset["test"]))))
     else:
-        train_ds = dataset['train']
-        val_ds = dataset['validation']
-        test_ds = dataset['test']
+        train_ds = dataset["train"]
+        val_ds = dataset["validation"]
+        test_ds = dataset["test"]
 
     return train_ds, val_ds, test_ds
 
+    
 if __name__ == "__main__":
-    # Quick script test
-    train, val, test = load_and_prepare_data(debug=True)
-    print(f"\nTrain Size: {len(train)}")
-    print("Data Example:")
-    print("--- CODE ---")
-    print(train[0]['code'][:200], "...")
-    print("--- SUMMARY ---")
-    print(train[0]['summary'])
+    # # Quick script test
+    print("Executing standalone smoke test for data_loader...")
+    train, val, test = load_and_prepare_data(debug=True, debug_size=50)
+    
+    print(f"\nSubset Sizes -> Train: {len(train)}, Validation: {len(val)}, Test: {len(test)}")
+    print("\n--- SAMPLE CODE ---")
+    print(train[0]["code"][:250], "\n...")
+    print("--- SAMPLE SUMMARY ---")
+    print(train[0]["summary"])
