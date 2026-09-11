@@ -45,7 +45,7 @@ def tokenize_dataset(dataset, tokenizer, max_input_len=256, max_target_len=64):
 
 if __name__ == "__main__":
     # Example usage for debugging purposes
-    from scripts.loader import load_and_prepare_data
+    from data.data_loader import load_and_prepare_data
     
     # Load a tiny subset of data
     train_ds, val_ds, test_ds = load_and_prepare_data(debug=True, debug_size=100)

@@ -13,8 +13,8 @@ from transformers import (
 # Add the project root to the path to import from custom modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from scripts.loader import load_and_prepare_data
-from scripts.preprocess import get_tokenizer, tokenize_dataset
+from data.data_loader import load_and_prepare_data
+from data.preprocess import get_tokenizer, tokenize_dataset
 from scripts.metrics import build_compute_metrics_fn
 
 def parse_args():
