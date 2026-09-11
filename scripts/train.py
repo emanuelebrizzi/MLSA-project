@@ -37,7 +37,7 @@ def main():
     
     # Load and preprocess data
     # Using the debug mode by default here to follow the "Start tiny" advice
-    train_ds, val_ds, test_ds = load_and_prepare_data(debug=True, debug_size=1000)
+    train_ds, val_ds, test_ds = load_and_prepare_data(debug=config['data'].get('debug', False), debug_size=1000)
     
     tokenizer = get_tokenizer(config['model']['checkpoint'])
     
