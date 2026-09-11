@@ -79,7 +79,7 @@ def main():
         model=model,
         args=eval_args,
         eval_dataset=tokenized_test,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
         compute_metrics=build_compute_metrics_fn(tokenizer)
     )
