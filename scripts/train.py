@@ -83,7 +83,7 @@ def main():
         args=training_args,
         train_dataset=tokenized_train,
         eval_dataset=tokenized_val,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
         compute_metrics=build_compute_metrics_fn(tokenizer)
     )
@@ -99,7 +99,7 @@ def main():
     print("Saving the final model...")
     trainer.save_model(os.path.join(config['training']['output_dir'], "final_model"))
     
-    # Final Evaluation & Perplexity
+    # Final Evaluation
     print("Running final evaluation...")
     eval_results = trainer.evaluate()
     
