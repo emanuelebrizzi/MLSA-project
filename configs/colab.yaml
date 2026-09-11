@@ -1,0 +1,37 @@
+# ==========================================
+# Colab Configuration
+# ==========================================
+
+experiment:
+  name: "codet5_colab_configuration"            # Descriptive tag for this accelerated Colab execution
+  seed: 42                                      # Deterministic seed for reproducible evaluation metrics
+
+data:
+  dataset_name: "code-search-net/code_search_net" # Source benchmark dataset on Hugging Face
+  language: "python"                            # Language split filtered during ingestion
+  debug: false                                  # Uses the full dataset to expose model to diverse code
+  debug_size: 1000                              # Unused fallback parameter while debug is false
+  max_input_length: 256                         # Code sequence length budget covering primary function logic
+  max_target_length: 64                         # Summary sequence length budget fitting concise docstrings
+
+model:
+  checkpoint: "Salesforce/codet5-small"         # Lightweight bimodal encoder-decoder (~60M parameters)
+
+training:
+  output_dir: "./checkpoints/colab_run"         # Target directory for Colab checkpoints and artifacts
+  max_steps: 600                                # Hard limit completing training in ~15-20 min on T4 GPU
+  num_train_epochs: 1                           # Ignored by trainer since max_steps is explicitly defined
+  batch_size: 16                                # Batch size fitting comfortably within 16GB VRAM on T4
+  learning_rate: 3.0e-4                         # Standard fine-tuning learning rate for T5 architectures
+  weight_decay: 0.01                            # Regularization weight applied to non-bias parameters
+  logging_steps: 25                             # Frequent console logging to monitor loss curve convergence
+  eval_steps: 200                               # Triggers 3 intermediate evaluations (step 200, 400, 600)
+  save_steps: 200                               # Saves a checkpoint after every intermediate evaluation
+  save_total_limit: 2                           # Retains only the two newest checkpoints to save Drive space
+  fp16: true                                    # Uses CUDA AMP half-precision to maximize GPU utilization
+
+generation:
+  num_beams: 4                                  # Beam search width ensuring generation quality over greedy
+  max_length: 64                                # Target summary length ceiling during evaluation passes
+  length_penalty: 1.0                           # Standard length penalty promoting complete sentence output
+  num_qualitative_examples: 5                   # Prints 5 inspection examples per check for the project report
