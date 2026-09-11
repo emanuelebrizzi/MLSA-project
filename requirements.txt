@@ -14,5 +14,5 @@ rouge-score>=0.1.2
 
 # --- Environment & Data Utilities ---
 pyyaml>=6.0
-numpy>=1.24.0,<2.0.0
+numpy>=1.24.0
 tqdm>=4.65.0
