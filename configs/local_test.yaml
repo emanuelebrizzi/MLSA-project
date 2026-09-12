@@ -28,7 +28,7 @@ training:
   eval_steps: 5                  
   save_steps: 10
   save_total_limit: 1
-  fp16: true                     
+  fp16: false                     
 
 generation:
   num_beams: 1                   
