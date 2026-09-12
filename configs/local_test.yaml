@@ -10,9 +10,9 @@ data:
   dataset_name: "code_search_net"
   language: "python"
   debug: true                    
-  debug_size: 100                
-  max_input_length: 128          
-  max_target_length: 32
+  debug_size: 20               
+  max_input_length: 64          
+  max_target_length: 16
 
 model:
   checkpoint: "Salesforce/codet5-small"
