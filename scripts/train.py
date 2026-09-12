@@ -67,7 +67,7 @@ def main():
     # Define Training Arguments
     training_kwargs = {
         "output_dir": config['training']['output_dir'],
-        "eval_strategy": "steps",
+        "evaluation_strategy": "steps",
         "eval_steps": config['training']['eval_steps'],
         "logging_steps": config['training']['logging_steps'],
         "save_steps": config['training']['save_steps'],
