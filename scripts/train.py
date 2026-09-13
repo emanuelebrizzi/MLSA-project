@@ -129,7 +129,7 @@ def main():
     print(f"Final Validation SacreBLEU  : {eval_results.get('eval_bleu', 0.0):.4f}")
 
 
-def load_config(config_path="configs/base.yaml"):
+def load_config(config_path="configs/debug.yaml"):
     """
     Loads the YAML configuration file, resolving paths relative to the project root.
     """
@@ -150,8 +150,8 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/local_test.yaml",
-        help="Relative or absolute path to the YAML configuration file (default: configs/local_test.yaml)"
+        default="configs/debug.yaml",
+        help="Relative or absolute path to the YAML configuration file (default: configs/debug.yaml)"
     )
     parser.add_argument(
         "--resume",
