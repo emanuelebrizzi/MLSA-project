@@ -20,7 +20,7 @@ project/
 │   └── metrics.py         # Custom evaluate metrics and qualitative callbacks
 ├── configs/
 │   ├── debug.yaml         # Debugging configuration for local smoke tests
-│   ├── colab_baseline.yaml# Standard configuration for Colab training
+│   ├── colab.yaml         # Standard configuration for Colab training
 │   └── ...                # Other YAML configs for ablation studies
 ├── checkpoints/           # (Git-ignored) Saved model weights and final models
 ├── logs/                  # CSV logs tracking experiment metrics and Git hashes
