@@ -136,7 +136,9 @@ def main():
     print("Logging experiment results to CSV...")
     # Save the evaluation results to a CSV file for experiment tracking
     log_path = config.get('experiment', {}).get('log_path', 'logs/experiments_log.csv')
-    log_experiment_to_csv(args.config, eval_results, notes="", output_file=log_path)
+    experiment_notes = config.get('experiment', {}).get('notes', '')
+    
+    log_experiment_to_csv(args.config, eval_results, notes=experiment_notes, output_file=log_path)
 
 def load_config(config_path="configs/debug.yaml"):
     """
@@ -151,29 +153,10 @@ def load_config(config_path="configs/debug.yaml"):
     with open(config_path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
 
-def get_git_commit_hash():
-    """
-    Retrieves the hash of the last Git commit to track which code was running.
-    """
-    try:
-        commit = subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD'], 
-            shell=True,
-            cwd=PROJECT_ROOT,
-            stderr=subprocess.STDOUT
-        )
-        return commit.decode('ascii').strip()
-    except Exception as e:
-        print(f"ERROR GIT: Unable to retrieve Git commit hash: {e}")
-        if isinstance(e, subprocess.CalledProcessError):
-            print(f"OUTPUT ERROR GIT: {e.output.decode('utf-8', errors='ignore')}\n")
-        return "No-Git"
-
 def log_experiment_to_csv(config_path, eval_results, notes="", output_file="logs/experiments_log.csv"):    
     """
     Saves the final results to a CSV file acting as a history log.
     """
-    git_hash = get_git_commit_hash()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -182,11 +165,10 @@ def log_experiment_to_csv(config_path, eval_results, notes="", output_file="logs
     with open(output_file, mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(["Timestamp", "Git Hash", "Config", "Notes", "Eval Loss", "SacreBLEU", "ROUGE-L"])
+            writer.writerow(["Timestamp", "Config", "Notes", "Eval Loss", "SacreBLEU", "ROUGE-L"])
             
         writer.writerow([
             timestamp,
-            git_hash,
             config_path,
             notes,
             round(eval_results.get("eval_loss", 0.0), 4),
