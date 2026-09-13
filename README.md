@@ -11,17 +11,19 @@ The repository follows a strict modular architecture to separate data processing
 ```text
 project/
 ├── data/
-│   ├── loader.py          # Downloads, cleans, and splits the CodeSearchNet dataset
+│   ├── data_loader.py     # Downloads, cleans, and splits the CodeSearchNet dataset
 │   └── preprocess.py      # Handles tokenization and inputs formatting
-├── models/
 ├── scripts/
-│   ├── train.py           # Main training loop with Seq2SeqTrainer
-│   ├── eval.py            # Evaluation script computing BLEU, ROUGE, and Perplexity
+│   ├── train.py           # Main training loop with Seq2SeqTrainer and CSV logging
+│   ├── evaluation.py      # Evaluation script computing BLEU, ROUGE, and Perplexity
 │   ├── summarize.py       # Inference script for real-time code summarization
 │   └── metrics.py         # Custom evaluate metrics and qualitative callbacks
 ├── configs/
-│   └── base.yaml          # Centralized hyperparameters and settings
+│   ├── debug.yaml         # Debugging configuration for local smoke tests
+│   ├── colab_baseline.yaml# Standard configuration for Colab training
+│   └── ...                # Other YAML configs for ablation studies
 ├── checkpoints/           # (Git-ignored) Saved model weights and final models
+├── logs/                  # CSV logs tracking experiment metrics and Git hashes
 ├── README.md
 └── requirements.txt
 ```
@@ -41,27 +43,30 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-The project is controlled via the `configs/base.yaml` file.
+The project is entirely controlled via YAML configuration files.
 
 ### 1. Training
-To train the model, simply run the training script. It will automatically load the data, initialize the model from `models/builder.py`, and save the output in the `checkpoints/` directory.
+To train the model, run the training script specifying a configuration file. It will automatically load the data, initialize the tokenizer and model from Hugging Face, and save the output in the`checkpoints/` directory. It also automatically `logs/` the run metrics to a CSV file in the logs/ directory.
 
 ```bash
-python scripts/train.py
+python scripts/train.py --config configs/debug.yaml
 ```
 
 ### 2. Evaluation
-
-To evaluate a trained checkpoint on the test set and compute metrics (Cross-Entropy Loss, Perplexity, BLEU, and ROUGE-1/2/L):
+To evaluate a trained checkpoint on the test set and compute final unbiased metrics (Cross-Entropy Loss, Perplexity, BLEU, and ROUGE-1/2/L):
 
 ```bash
-python scripts/eval.py --checkpoint checkpoints/final_model
+python scripts/evaluation.py --checkpoint checkpoints/debug_run/final_model --config configs/debug.yaml
 ```
 
 
 ### 3. Summarization
-You can test the model dynamically on unseen code snippets. The script accepts either a direct string or a Python file.
+You can test the model dynamically on unseen code snippets. The script accepts either a direct string (`--input`) or a Python file (`--file`).
 
 ```bash
-python scripts/eval.py --checkpoint checkpoints/final_model
+# Using a string directly:
+python scripts/summarize.py --checkpoint checkpoints/debug_run/final_model --input "def add(a, b): return a + b"
+
+# Using a python file:
+python scripts/summarize.py --checkpoint checkpoints/debug_run/final_model --file script.py
 ```
