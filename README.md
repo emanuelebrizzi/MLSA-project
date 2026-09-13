@@ -70,3 +70,11 @@ python scripts/summarize.py --checkpoint checkpoints/debug_run/final_model --inp
 # Using a python file:
 python scripts/summarize.py --checkpoint checkpoints/debug_run/final_model --file script.py
 ```
+
+### Note for Google Colab Users
+Google Colab comes with a pre-installed version of `peft` that causes dependency conflicts with the `accelerate` library. If running in a Colab notebook, uninstall it before installing the requirements:
+
+```bash
+!pip uninstall -y peft
+!pip install -r requirements.txt
+```
