@@ -19,8 +19,16 @@ def build_compute_metrics_fn(tokenizer):
             preds = preds[0]
             
         # Replace -100 masking tokens with pad token id so tokenizer can decode
+        preds = np.where(preds != -100, preds, tokenizer.pad_token_id)
+        vocab_size = getattr(tokenizer, "vocab_size", None)
+        if vocab_size is not None:
+            preds = np.where((preds >= 0) & (preds < vocab_size), preds, tokenizer.pad_token_id)
+
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-        
+        if vocab_size is not None:
+            labels = np.where((labels >= 0) & (labels < vocab_size), labels, tokenizer.pad_token_id)
+
+          
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
         
