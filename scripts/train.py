@@ -152,12 +152,21 @@ def load_config(config_path="configs/debug.yaml"):
         return yaml.safe_load(file)
 
 def get_git_commit_hash():
-    """Retrieves the hash of the last Git commit to track which code was running."""
+    """
+    Retrieves the hash of the last Git commit to track which code was running.
+    """
     try:
-        # Runs the bash command 'git rev-parse --short HEAD'
-        commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+        commit = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], 
+            shell=True,
+            cwd=PROJECT_ROOT,
+            stderr=subprocess.STDOUT
+        )
         return commit.decode('ascii').strip()
-    except Exception:
+    except Exception as e:
+        print(f"ERROR GIT: Unable to retrieve Git commit hash: {e}")
+        if isinstance(e, subprocess.CalledProcessError):
+            print(f"OUTPUT ERROR GIT: {e.output.decode('utf-8', errors='ignore')}\n")
         return "No-Git"
 
 def log_experiment_to_csv(config_path, eval_results, notes="", output_file="logs/experiments_log.csv"):    
