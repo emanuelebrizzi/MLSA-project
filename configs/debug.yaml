@@ -5,6 +5,7 @@
 experiment:
   name: "codet5_smoke_test"
   seed: 42
+  log_path: "logs/debug_experiments_log.csv"
 
 data:
   dataset_name: "code_search_net"

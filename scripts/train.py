@@ -4,12 +4,17 @@ import math
 import yaml
 import argparse
 import torch
+import subprocess
+import csv
+from datetime import datetime
+import os
 from transformers import (
     AutoModelForSeq2SeqLM,
     Seq2SeqTrainingArguments,
     Seq2SeqTrainer,
     DataCollatorForSeq2Seq
 )
+
 
 # Add project root directory to sys.path to allow modular imports from data/ and scripts/
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -128,6 +133,10 @@ def main():
         print(f"Final Validation Perplexity : {perplexity:.4f}")
     print(f"Final Validation SacreBLEU  : {eval_results.get('eval_bleu', 0.0):.4f}")
 
+    print("Logging experiment results to CSV...")
+    # Save the evaluation results to a CSV file for experiment tracking
+    log_path = config.get('experiment', {}).get('log_path', 'logs/experiments_log.csv')
+    log_experiment_to_csv(args.config, eval_results, notes="", output_file=log_path)
 
 def load_config(config_path="configs/debug.yaml"):
     """
@@ -141,6 +150,40 @@ def load_config(config_path="configs/debug.yaml"):
         
     with open(config_path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
+
+def get_git_commit_hash():
+    """Retrieves the hash of the last Git commit to track which code was running."""
+    try:
+        # Runs the bash command 'git rev-parse --short HEAD'
+        commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+        return commit.decode('ascii').strip()
+    except Exception:
+        return "No-Git"
+
+def log_experiment_to_csv(config_path, eval_results, notes="", output_file="logs/experiments_log.csv"):    
+    """
+    Saves the final results to a CSV file acting as a history log.
+    """
+    git_hash = get_git_commit_hash()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    file_exists = os.path.isfile(output_file)
+    
+    with open(output_file, mode="a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Timestamp", "Git Hash", "Config", "Notes", "Eval Loss", "SacreBLEU", "ROUGE-L"])
+            
+        writer.writerow([
+            timestamp,
+            git_hash,
+            config_path,
+            notes,
+            round(eval_results.get("eval_loss", 0.0), 4),
+            round(eval_results.get("eval_bleu", 0.0), 4),
+            round(eval_results.get("eval_rougeL", 0.0), 4)
+        ])
 
 def parse_args():
     """

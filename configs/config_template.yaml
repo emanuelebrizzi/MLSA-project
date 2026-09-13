@@ -3,8 +3,9 @@
 # ==============================================================================
 
 experiment:
-  name: "codet5_python_summarization"            # Experiment tag for tracking runs and logs
+  name: "codet5_python_summarization"           # Experiment tag for tracking runs and logs
   seed: 42                                      # Master random seed ensuring reproducibility across runs
+  log_path: "logs/experiments_log.csv"          # Path to the CSV file for logging experiment results
 
 data:
   dataset_name: "code-search-net/code_search_net" # Benchmark dataset identifier on Hugging Face Hub
