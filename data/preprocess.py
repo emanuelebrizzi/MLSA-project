@@ -44,13 +44,12 @@ def tokenize_dataset(dataset, tokenizer, max_input_len=256, max_target_len=64):
     return tokenized_dataset
 
 if __name__ == "__main__":
-    # Example usage for debugging purposes
+    # Smoke test execution
+    print("Executing standalone smoke test for data_loader...")
     from data.data_loader import load_and_prepare_data
     
-    # Load a tiny subset of data
     train_ds, val_ds, test_ds = load_and_prepare_data(debug=True, debug_size=100)
     
-    # Initialize tokenizer and process the training set
     tokenizer = get_tokenizer()
     tokenized_train = tokenize_dataset(train_ds, tokenizer)
     

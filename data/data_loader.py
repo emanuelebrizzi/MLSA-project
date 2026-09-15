@@ -92,7 +92,6 @@ def load_and_prepare_data(debug=False, debug_size=1000):
 
     
 if __name__ == "__main__":
-    # Smoke test execution
     print("Executing standalone smoke test for data_loader...")
     train, val, test = load_and_prepare_data(debug=True, debug_size=50)
     

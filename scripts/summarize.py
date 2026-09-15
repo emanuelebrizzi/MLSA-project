@@ -36,7 +36,7 @@ def generate_summary(code_snippet, model, tokenizer, device):
     """
     Takes a string of Python code and generates a natural language summary.
     """
-    # 1. Tokenize the input code
+    # Tokenize the input code
     inputs = tokenizer(
         code_snippet, 
         return_tensors="pt", 
@@ -44,7 +44,7 @@ def generate_summary(code_snippet, model, tokenizer, device):
         truncation=True
     ).to(device)
     
-    # 2. Generate output tokens using Beam Search for better quality
+    # Generate output tokens using Beam Search for better quality
     with torch.no_grad():
         output_tokens = model.generate(
             input_ids=inputs["input_ids"],
@@ -55,7 +55,7 @@ def generate_summary(code_snippet, model, tokenizer, device):
             early_stopping=True
         )
         
-    # 3. Decode the generated tokens back into a readable string
+    # Decode the generated tokens back into a readable string
     summary = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
     return summary
 
@@ -69,7 +69,7 @@ def main():
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(args.checkpoint)
     model = AutoModelForSeq2SeqLM.from_pretrained(args.checkpoint).to(device)
-    model.eval() # Set to evaluation mode to disable dropout layers
+    model.eval() 
     
     # Extract the code to summarize
     code_to_summarize = ""
